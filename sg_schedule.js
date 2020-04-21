@@ -458,8 +458,9 @@ function calcNextStopTime(isMowing) {
 	if(setUntil) {
 		let now = (new Date()).getTime();
 		let secs = (mowingPlannedEnd - now) / 1000;
-		let nextSecs = (nextStop - now) / 1000;
+		let nextSecs = (setUntil - now) / 1000;
 		if(!isMowing || secs > 0 && Math.abs(secs - nextSecs) > 300) {
+			mowerLog('Mowing end time differs: ' + secs + ' / ' + nextSecs + ' -> sending new command with mowing duration ' + Math.floor(nextSecs / 60), true);
 			// resend command
 			return Math.floor(nextSecs / 60);
 		} else {
@@ -688,13 +689,17 @@ function checkMowingPlans() {
 	// get current mowing state
 	let curState = getState('smartgarden.0.LOCATION_' + SG_LOCATION_ID + '.DEVICE_' + SG_DEVICE_ID + '.SERVICE_MOWER_' + SG_DEVICE_ID + '.activity_value').val;
 	let curStateCheck = '';
+	let noCommand = false;
 	switch(curState) {
 		case 'PAUSED':
 		case 'PARKED_TIMER':
 		case 'PARKED_PARK_SELECTED':
 		case 'PARKED_AUTOTIMER':
+			curStateCheck = 'PARK';
+			break;
 		case 'OK_SEARCHING':
 			curStateCheck = 'PARK';
+			noCommand = true;
 			break;
 		case 'OK_CUTTING':
 		case 'OK_CUTTING_TIMER_OVERRIDDEN':
@@ -842,7 +847,7 @@ function checkMowingPlans() {
 			if(desiredState === 'MOWING') {
 				// we should start mowing now
 				let minsUntilStop = calcNextStopTime((curStateCheck === 'MOWING'));
-				if(curStateCheck !== 'MOWING' && minsUntilStop) {
+				if(curStateCheck !== 'MOWING' && minsUntilStop && noCommand !== true) {
 					mowerLog('Sending / correcting command for mowing to ' + minsUntilStop, true);
 					setState('smartgarden.0.LOCATION_' + SG_LOCATION_ID + '.DEVICE_' + SG_DEVICE_ID + '.SERVICE_MOWER_' + SG_DEVICE_ID + '.activity_control_i', minsUntilStop * 60, false); // command with ack=false
 				}
