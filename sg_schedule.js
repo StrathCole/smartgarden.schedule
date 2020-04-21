@@ -522,7 +522,10 @@ function calcRemainingMowingTime() {
 	if(mowingPlannedEnd && mowingEndTime.getTime() > mowingPlannedEnd) {
 		mowerLog('Planned mowing end is before next charging is needed.', true);
 		mowingEndTime.setTime(mowingPlannedEnd);
-		remainingTime = 0;
+		remainingTime = (mowingPlannedEnd.getTime() - now.getTime()) / 1000;
+		if(remainingTime < 0) {
+			remainingTime = 0;
+		}
 	}
 
 	setState(DATA_BASE_ID + '.remaining_mowing_time', remainingTime, true);
