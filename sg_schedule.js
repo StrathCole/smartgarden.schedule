@@ -7,6 +7,7 @@
  * DATA_BASE_ID.stop_mowing - manual trigger for locking the mowing process and park until further notice
  *
  * DATA_BASE_ID.cmd_mowing_until - the end time of the current "manual mowing" command sent by the script (mowing end time)
+ * DATA_BASE_ID.mower_state - current state of the mower translated from activity_value in clear text
  * DATA_BASE_ID.current_schedule_state - current desired state of the mower from schedule, MOWING or PARK
  * DATA_BASE_ID.current_schedule_reason - reason for current state (SCHEDULE, LOCKED - due to MOWING_LOCKS trigger, PAUSE - due to pause setting in schedule, COMPLETE - mowing time for current day reached)
  * DATA_BASE_ID.locked_until - time until the current lock trigger is locking the mowing state
@@ -150,6 +151,21 @@ const MOWING_SCHEDULE = {
 	}
 };
 
+const MOWER_STATE_TEXTS = {
+	'PAUSED': 'Pausiert',
+    'OK_CUTTING': 'Mähen (Timer)',
+    'OK_CUTTING_TIMER_OVERRIDDEN': 'Mähen',
+    'OK_SEARCHING': 'Unterwegs zur Station',
+    'OK_LEAVING':  'Unterwegs zum Startpunkt',
+    'OK_CHARGING': 'Aufladen',
+    'PARKED_TIMER': 'Geparkt (Timer)',
+    'PARKED_PARK_SELECTED': 'Geparkt',
+    'PARKED_AUTOTIMER': 'Geparkt (Timer)',
+    'NONE': 'Unbekannt (Fehler)',
+
+	'UNKNOWN': 'Unbekannt'
+};
+
 /* ### CHANGES SHOULD NOT BE NECCESSARY BELOW ### */
 
 if(existsState(DATA_BASE_ID + '.stop_mowing') === false) {
@@ -174,6 +190,9 @@ if(existsState(DATA_BASE_ID + '.current_schedule_state') === false) {
 }
 if(existsState(DATA_BASE_ID + '.current_schedule_reason') === false) {
     createState(DATA_BASE_ID + '.current_schedule_reason', '', {name: 'Current mowing state reason', unit: '', type: 'string', role: 'text'});
+}
+if(existsState(DATA_BASE_ID + '.mower_state') === false) {
+    createState(DATA_BASE_ID + '.mower_state', '', {name: 'Current mowing state in clear text', unit: '', type: 'string', role: 'text'});
 }
 
 
@@ -1027,6 +1046,13 @@ on({id: 'smartgarden.0.LOCATION_' + SG_LOCATION_ID + '.DEVICE_' + SG_DEVICE_ID +
 	}
 
 	let newState = obj.state.val;
+
+	if(newState in MOWER_STATE_TEXTS) {
+		setState(DATA_BASE_ID + '.mower_state', MOWER_STATE_TEXTS[newState], true);
+	} else {
+		setState(DATA_BASE_ID + '.mower_state', MOWER_STATE_TEXTS['UNKNOWN'], true);
+	}
+
 	if(newState === 'OK_LEAVING') {
 		// leaving station start mowing time measure
 		mowerLog('Mower is leaving the station', true);
@@ -1123,9 +1149,16 @@ if(tmpCheckBat === 'CHARGING') {
 
 let tmpCheckMow = getState('smartgarden.0.LOCATION_' + SG_LOCATION_ID + '.DEVICE_' + SG_DEVICE_ID + '.SERVICE_MOWER_' + SG_DEVICE_ID + '.activity_mowing_i').val;
 let mowerState = getState('smartgarden.0.LOCATION_' + SG_LOCATION_ID + '.DEVICE_' + SG_DEVICE_ID + '.SERVICE_MOWER_' + SG_DEVICE_ID + '.state_value').val;
+let actState = getState('smartgarden.0.LOCATION_' + SG_LOCATION_ID + '.DEVICE_' + SG_DEVICE_ID + '.SERVICE_MOWER_' + SG_DEVICE_ID + '.activity_value');
+
+if(actState.val in MOWER_STATE_TEXTS) {
+	setState(DATA_BASE_ID + '.mower_state', MOWER_STATE_TEXTS[actState.val], true);
+} else {
+	setState(DATA_BASE_ID + '.mower_state', MOWER_STATE_TEXTS['UNKNOWN'], true);
+}
+
 if(tmpCheckMow === true && mowerState === 'OK') {
 	// check for last state change
-	let actState = getState('smartgarden.0.LOCATION_' + SG_LOCATION_ID + '.DEVICE_' + SG_DEVICE_ID + '.SERVICE_MOWER_' + SG_DEVICE_ID + '.activity_value');
 	if(actState.ack === true && actState.val !== 'OK_SEARCHING') {
 		mowingStarted = actState.lc;
 		calcRemainingMowingTime();
