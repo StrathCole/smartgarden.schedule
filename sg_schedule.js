@@ -1026,6 +1026,7 @@ on({id: 'smartgarden.0.LOCATION_' + SG_LOCATION_ID + '.DEVICE_' + SG_DEVICE_ID +
 			clearInterval(countDownTimer);
 		}
 		mowingStarted = (new Date()).getTime();
+		mowingTimeToday.lastchange = mowingStarted;
 		mowingStopCommand = false;
 		setState(DATA_BASE_ID + '.next_start', 0, true);
 		setState(DATA_BASE_ID + '.remaining_charge_time', 0, true);
