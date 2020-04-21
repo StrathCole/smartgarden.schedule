@@ -259,7 +259,7 @@ function getArrayCleanAvg(arr) {
 	if(arr.length < 1) {
 		return tmp_average; // fallback on low-quality values
 	}
-	
+
 	return getArrayAvg(arr);
 }
 
@@ -709,10 +709,10 @@ function checkMowingPlans() {
 	}
 
 	if(curStateCheck === 'MOWING') {
-		mowingTimeToday.lastchange = sqldate;
 		mowingTimeToday.time = mowingTimeToday.time + ((now.getTime() - mowingTimeToday.lastchange) / 60000);
+		mowingTimeToday.lastchange = now.getTime();
 		setState(DATA_BASE_ID + '.mowing_time_day', JSON.stringify(mowingTimeToday), true);
-	}0
+	}
 
 	let desiredState = null;
 	let reason = '';
