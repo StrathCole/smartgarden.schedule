@@ -747,41 +747,6 @@ function checkMowingPlans() {
 		desiredState = 'MOWING';
 		reason = 'SCHEDULE';
 
-		let pausefrom;
-		let pauseto;
-		let earliest = getTimeInMinutes(currentPlan.earliestStart);
-		let latest = getTimeInMinutes(currentPlan.latestStop);
-
-		if(currentPlan.pause && currentPlan.pause.from && currentPlan.pause.to) {
-			pausefrom = getTimeInMinutes(currentPlan.pause.from);
-			pauseto = getTimeInMinutes(currentPlan.pause.to);
-		}
-
-		let nextMowingEnd = currentMinutes;
-		if(currentPlan.mowingTime) {
-			nextMowingEnd = nextMowingEnd + currentPlan.mowingTime - mowingTimeToday.time;
-		}
-		if(pausefrom && pauseto && pausefrom > currentMinutes && pauseto > currentMinutes) {
-			if(!nextMowingEnd || pausefrom < nextMowingEnd) {
-				nextMowingEnd = pausefrom;
-			}
-		}
-		if(latest) {
-			if(!nextMowingEnd || latest < nextMowingEnd) {
-				nextMowingEnd = latest;
-			}
-		}
-
-		if(nextMowingEnd) {
-			let tmpDate = new Date();
-			tmpDate.setHours(0, nextMowingEnd, 0, 0); // is in minutes since current day's start
-
-			nextStopValues.plan = tmpDate.getTime();
-		} else {
-			nextStopValues.plan = 0;
-		}
-		calcNextStopTime();
-
 		let plansToCheck = [];
 		for(let i = 0; i < 7; i++) {
 			let tmpDay = getWeekDayIdent((weekDay + i) % 7);
@@ -791,6 +756,9 @@ function checkMowingPlans() {
 		}
 
 		let nextMowingStart = 0;
+		let nextMowingEnd = 0;
+		let foundStart = false;
+		let foundStop = false;
 		for(let i = 0; i < plansToCheck.length; i++) {
 			let chkPauseFrom;
 			let chkPauseTo;
@@ -821,7 +789,29 @@ function checkMowingPlans() {
 			}
 
 			if(nextMowingStart) {
-				break; // found next plan
+				foundStart = true;
+			}
+
+			if(i === 0 && chkPlan.mowingTime) { // only relevant today
+				nextMowingEnd = currentMinutes + chkPlan.mowingTime - mowingTimeToday.time;
+			}
+			if(chkPauseFrom && chkPauseTo && chkPauseFrom > currentMinutes && chkPauseTo > currentMinutes) {
+				if(!nextMowingEnd || chkPauseFrom < nextMowingEnd) {
+					nextMowingEnd = chkPauseFrom;
+				}
+			}
+			if(chkLatest) {
+				if(!nextMowingEnd || chkLatest < nextMowingEnd) {
+					nextMowingEnd = chkLatest;
+				}
+			}
+
+			if(nextMowingEnd) {
+				foundStop = true;
+			}
+
+			if(foundStart === true && foundStop === true) {
+				break;
 			}
 		}
 
@@ -832,7 +822,17 @@ function checkMowingPlans() {
 		} else {
 			nextStartValues.plan = 0;
 		}
+
+		if(nextMowingEnd) {
+			let tmpDate = new Date();
+			tmpDate.setHours(0, nextMowingEnd, 0, 0); // is in minutes since current day's start
+			nextStopValues.plan = tmpDate.getTime();
+		} else {
+			nextStopValues.plan = 0;
+		}
+
 		calcNextStartTime();
+		calcNextStopTime();
 
 		if(!currentPlan.mowing) {
 			desiredState = 'PARK';
@@ -985,7 +985,7 @@ function checkLockTriggerStates() {
 
 for(let i = 0; i < MOWING_LOCKS.length; i++) {
 	let lck = MOWING_LOCKS[i];
-	on({id: lck.triggerStateId, change: 'ne', ack: true}, function(obj) {
+	on({id: lck.triggerStateId, change: 'ne'}, function(obj) {
 		checkLockTriggerStates();
 	});
 }
@@ -1016,6 +1016,7 @@ on({id: 'smartgarden.0.LOCATION_' + SG_LOCATION_ID + '.DEVICE_' + SG_DEVICE_ID +
 		case 'PARK_UNTIL_NEXT_TASK' :
 		case 'PARK_UNTIL_FURTHER_NOTICE' :
 			mowerLog('Manual parking command', true);
+			setState(DATA_BASE_ID + '.cmd_mowing_until', 0, true);
 			break;
 		case 'START_DONT_OVERRIDE' :
 			//ignore
