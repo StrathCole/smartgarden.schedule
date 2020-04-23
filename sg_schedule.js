@@ -755,18 +755,20 @@ function checkMowingPlans() {
 			}
 		}
 
+		let chkEarliest;
+		let chkLatest;
+		let chkPauseFrom;
+		let chkPauseTo;
 		let nextMowingStart = 0;
 		let nextMowingEnd = 0;
 		let foundStart = false;
 		let foundStop = false;
 		for(let i = 0; i < plansToCheck.length; i++) {
-			let chkPauseFrom;
-			let chkPauseTo;
 			let chkPlan = plansToCheck[i];
-			let chkEarliest;
-			let chkLatest;
 
 			let addMinutes = 60 * 24 * i;
+			foundStart = false;
+			foundStop = false;
 
 			if(!chkPlan.mowing) {
 				continue;
@@ -782,7 +784,7 @@ function checkMowingPlans() {
 			if(chkPauseFrom && chkPauseTo && chkPauseFrom <= currentMinutes && chkPauseTo > currentMinutes) {
 				nextMowingStart = chkPauseTo;
 			}
-			if(chkEarliest && chkEarliest > currentMinutes) {
+			if(chkEarliest){// && chkEarliest > currentMinutes) {
 				if(!nextMowingStart || chkEarliest < nextMowingStart) {
 					nextMowingStart = chkEarliest;
 				}
@@ -806,7 +808,7 @@ function checkMowingPlans() {
 				}
 			}
 
-			if(nextMowingEnd) {
+			if(nextMowingEnd && nextMowingEnd > nextMowingStart) {
 				foundStop = true;
 			}
 
@@ -845,13 +847,13 @@ function checkMowingPlans() {
 			reason = 'LOCKED';
 		} else {
 			// check if after earliestStart
-			if(currentMinutes < earliest || currentMinutes > latest) {
+			if(currentMinutes < chkEarliest || currentMinutes > chkLatest) {
 				desiredState = 'PARK';
 				reason = 'SCHEDULE';
 			} else {
 				// check pause time
-				if(pausefrom && pauseto) {
-					if(currentMinutes >= pausefrom && currentMinutes <= pauseto) {
+				if(chkPauseFrom && chkPauseTo) {
+					if(currentMinutes >= chkPauseFrom && currentMinutes <= chkPauseTo) {
 						desiredState = 'PARK';
 						reason = 'PAUSE';
 					}
