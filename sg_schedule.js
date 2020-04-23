@@ -770,6 +770,9 @@ function checkMowingPlans() {
 			foundStart = false;
 			foundStop = false;
 
+			nextMowingStart = 0;
+			nextMowingEnd = 0;
+
 			if(!chkPlan.mowing) {
 				continue;
 			}
@@ -795,6 +798,9 @@ function checkMowingPlans() {
 			}
 
 			if(i === 0 && chkPlan.mowingTime) { // only relevant today
+				if(mowingTimeToday.time >= chkPlan.mowingTime) {
+					continue; // completed for today
+				}
 				nextMowingEnd = currentMinutes + chkPlan.mowingTime - mowingTimeToday.time;
 			}
 			if(chkPauseFrom && chkPauseTo && chkPauseFrom > currentMinutes && chkPauseTo > currentMinutes) {
